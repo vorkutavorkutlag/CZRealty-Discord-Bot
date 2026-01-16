@@ -3,7 +3,7 @@ import os
 import discord
 import dotenv
 import json
-from pprint import pprint
+from sreality import fresh_estates
 from enum import Enum
 from discord.ext import commands, tasks
 
@@ -21,6 +21,7 @@ intents.guilds = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 glob_config = {}
+CONFIG_PATH = "config.json"
 
 
 class ConfigKeys(Enum):
@@ -29,19 +30,19 @@ class ConfigKeys(Enum):
 
 def load_config() -> dict:
     try:
-        with open("config.json", 'r') as f:
+        with open(CONFIG_PATH, 'r') as f:
             try:
                 return json.load(f)
             except json.decoder.JSONDecodeError:
                 return {}
     except FileNotFoundError:
-        with open("config.json", 'w'):
+        with open(CONFIG_PATH, 'w'):
             pass
         return {}
 
 
 def save_config(config: dict) -> None:
-    with open("config.json", 'w') as f:
+    with open(CONFIG_PATH, 'w') as f:
         json.dump(config, f)
 
 
