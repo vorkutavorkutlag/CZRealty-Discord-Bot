@@ -21,7 +21,8 @@ intents.guilds = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 glob_config = {}
-CONFIG_PATH = "config.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 
 
 class ConfigKeys(Enum):
@@ -50,6 +51,9 @@ def save_config(config: dict) -> None:
 async def on_ready():
     print(f"We are {bot.user.name}")
 
+    if not scrape_sreality.is_running():
+        scrape_sreality.start()
+
 
 @bot.event
 async def on_message(message):
@@ -60,25 +64,35 @@ async def on_message(message):
 
 
 @bot.command()
-async def setchannel(ctx: Context, *args):
+async def setchannel(ctx: Context, channel: discord.TextChannel):
     global glob_config
     glob_config = load_config()
-
-    channel_id = int(args[0][2:-1])
-    channel = bot.get_channel(channel_id)
-
-    if type(channel) != discord.channel.TextChannel:
-        await ctx.send("Invalid channel.")
-
-    glob_config[ConfigKeys.DEFAULT_CHANNEL.value] = channel_id
+    glob_config[ConfigKeys.DEFAULT_CHANNEL.value] = channel.id
     save_config(glob_config)
+    await ctx.send(f"Successfully registered {channel.mention}.")
 
-    await ctx.send("Successfully registered channel.")
 
 
 @tasks.loop(hours=1)
 async def scrape_sreality():
-    pass
+    await bot.wait_until_ready()
+
+    channel_id = load_config()[ConfigKeys.DEFAULT_CHANNEL.value]
+    channel: discord.TextChannel = bot.get_channel(channel_id)
+
+    estates = fresh_estates()
+    if not estates:
+        # print("Nothing new under the sun.")
+        return
+
+    for estate_url in estates:
+        embed = discord.Embed(title="New estate found!", url=estate_url, description=estate_url)
+        await channel.send(embed=embed)
+
+
+@bot.command()
+async def force_sreality(_ctx, *_args):
+    await scrape_sreality()
 
 
 bot.run(token=DISCORD_TOKEN)
